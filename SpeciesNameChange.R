@@ -4,6 +4,8 @@
 
 ### Hannah White 04.05.2021
 
+## This will match species in European Bird Trait Database - different for Elton Traits
+
 ### species in Romania
 birds <- read.csv('BirdSpecies.csv', header = TRUE) # bird species list
 
