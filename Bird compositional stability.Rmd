@@ -1,0 +1,169 @@
+---
+title: "Bird compositional stability"
+author: "Samuel R.P-J. Ross"
+date: "11/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(readr)
+require(tibble)
+require(tidyr)
+require(scales)
+require(dplyr)
+require(RColorBrewer)
+require(vegan)
+require(orddom)
+require(MuMIn)
+
+setwd("~/Desktop/Research/In progress/2021 Hannah project/Data")
+Bird_comp<-read_csv(file = '2013-19_birds.csv',col_names = T)
+
+setwd("~/Desktop/Research/In progress/2021 Hannah project/Data")
+Site_data<-read_csv(file = 'Site_data.csv',col_names = T)
+
+```
+
+**Hellinger transformation**
+
+First, we'll produce the Hellinger transformed community matrix which is basically the square root transformation of relative abundance, but is even less sensitive to abundance (particularly in the case of large numbers of taxa). Hellinger transformations do not give high weights to rare species. Legendre & Gallagher (2001, _Oecologia_) suggest using Hellinger transformation before ordination *unless* one wants to give high weight to rare species.
+
+```{r}
+
+# split out bird data across all years and sites
+t.all<-Bird_comp[,12:147]
+
+# Hellinger-transform the species dataset
+Comp.t.all <- decostand(t.all, "hellinger")
+
+# Add them back into the original dataset
+t.all<-Bird_comp[,c(1:4,12:147)]
+t.all[,5:140]<-Comp.t.all
+rm(Comp.t.all)
+
+```
+
+Now we have Hellinger-transformed bird data from which we can calculate Bray Curtis (dis)similarity. We'll calculate dissimilarity through time to get at temporal variability. 
+
+Let's measure temporal variability as a measure of stability, using the Euclidean distance of each site at time (t) to the centroid of that site through time. 
+
+```{r}
+
+# get only the data for which we have environmental data for the sites
+Bird_comp2<-Bird_comp[Bird_comp$Site %in% Site_data$Site_ID,]
+
+# get output table
+Bird_Temp_CV<-data.frame(matrix(data =unique(Bird_comp2$Site)))
+colnames(Bird_Temp_CV)<-"Site"
+Bird_Temp_CV$Temp_Var<-NA
+Bird_Temp_CV$N_years<-1
+
+# convert t.all sites to factors
+t.all2<-t.all[t.all$Site %in% Bird_Temp_CV$Site,]
+
+t.all2$Site<-parse_factor(x = as.character(t.all2$Site),
+                          ordered = F,
+                          include_na = F)
+
+```
+
+**Bray-Curtis dissimilarity**
+
+Generate dissimilarity matrices using Bray-Curtis:
+
+```{r}
+
+# for each site in our list...
+Site.mat<-list()
+
+for (i in 1:nrow(Bird_Temp_CV)) {
+  
+  Data<-t.all2[t.all2$Site %in% Bird_Temp_CV$Site[i],5:140]
+
+  Site.mat[[i]]<-vegdist(Data,
+                         method="bray", 
+                         binary=FALSE, 
+                         diag=TRUE, 
+                         upper=FALSE, 
+                         na.rm = TRUE)
+
+}
+
+
+```
+
+**Temporal variability**
+
+Now get Temporal Variability as the Euclidean distance to each site's time-averaged centroid:
+
+```{r}
+
+for (i in c(1:91,95:143,145:175,177:248,250:256)) {
+
+  Centroid.Out<-betadisper(d = Site.mat[[i]],
+                 group = t.all2$Site[t.all2$Site %in% Bird_Temp_CV$Site[i]],
+                 type = "centroid",
+                 sqrt.dist = T)
+  
+  # get temporal CV as mean of distances between time points for each site
+  Bird_Temp_CV$Temp_Var[i]<-mean(Centroid.Out$distances,na.rm=T)
+  
+  # get number of points in time series (i.e. number of sampling years)
+  Bird_Temp_CV$N_years[i]<-nrow(Bird_comp2[Bird_comp2$Site %in% Bird_Temp_CV$Site[i],])
+
+}
+
+```
+
+
+THE BETTER WAY TO DO THIS IS TO SUBSET BY SITES WITH MULTIPLE YEARS FIRST
+
+
+```{r}
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 2,]) # 250
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 3,]) # 234
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 4,]) # 205
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 5,]) # 98
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 6,]) # 51
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 7,]) # 5
+
+```
+
+
+**Community Asynchrony**
+
+```{r}
+
+Bird_Temp_CV$Com.Asynch<-NA
+
+for (i in c(1:91,95:143,145:175,177:248,250:256)) {
+  
+  # get spcies abundances of all bird species for site of interest
+  boop<-Bird_comp2[Bird_comp2$Site %in% Bird_Temp_CV$Site[i],12:147]
+  
+  # get sd of each species through time
+  bi<-apply(boop,MARGIN = 2,FUN = sd,na.rm=T)
+
+  # get total abundance for site of interest
+  bT<-unlist(Bird_comp2[Bird_comp2$Site %in% Bird_Temp_CV$Site[i],6])
+
+  # get variance of total abundance
+  Total_var<-sd(bT)^2
+
+  # calculate community asynchrony as 1 - variance of total abundance / (sum of standard deviations of individual species) ^ 2
+  Bird_Temp_CV$Com.Asynch[i]<-1-(Total_var/sum(bi)^2)
+  
+}
+
+```
+
+ranges between 0 and 1 where 1 = perfectly asynchronous changes to species abundances, and 0 is perfect asynchrony
