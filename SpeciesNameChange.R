@@ -22,5 +22,7 @@ birds$species <- gsub('Emberiza_calandra', 'Miliaria_calandra', birds$species)
 birds$species <- gsub('Chloris_chloris', 'Carduelis_chloris', birds$species)
 birds$species <- gsub('Poecile_palustris', 'Parus_palustris', birds$species)
 birds$species <- gsub('Iduna_pallida', 'Hippolais_pallida', birds$species)
+birds$species <- gsub('Saxicola_rubetrus', 'Saxicola_rubetra', birds$species)
+birds$species <- gsub('Saxocola_torquatus', 'Saxicola_torquatus', birds$species)
 
 ### Remember to combine Buteo buteo records in data
