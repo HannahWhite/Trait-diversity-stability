@@ -75,7 +75,8 @@ c.cornix[1] <- 500
 traits.eu <- rbind(traits.eu, c.cornix)
 
 # extract just species name and clutch size
-traits.eu <- traits.eu[, c(4, 24)]
+traits.eu <- traits.eu[, c(4, 24, 53:67)]
+traits.eu[,2:17] <- apply(traits.eu[,2:17], 2, as.numeric)
 names(traits.eu)[1] <- 'species'
 
 traits.eu$species <- gsub('Leiopicus_medius', 'Dendrocopos_medius', traits.eu$species)
@@ -91,8 +92,13 @@ traits.eu$species <- gsub('Chloris_chloris', 'Carduelis_chloris', traits.eu$spec
 traits.eu$species <- gsub('Poecile_palustris', 'Parus_palustris', traits.eu$species)
 traits.eu$species <- gsub('Iduna_pallida', 'Hippolais_pallida', traits.eu$species)
 
+## calculate habitat plasticity
+traits.eu$habitat.plasticity <- rowSums(traits.eu[,3:17])
+
+# subset to just romanian birds
 clutch.rom <- traits.eu[traits.eu$species %in% traits.rom$Scientific,]
 
+# merge European Bird Trait Database and Elton traits data
 traits.rom <- merge(traits.rom, clutch.rom, by.x = 'Scientific', by.y = 'species', all= TRUE)
 
 names(traits.rom)[c(1, 25)] <- c('species', 'clutch.mean')
