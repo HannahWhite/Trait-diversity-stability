@@ -1,11 +1,8 @@
 ###########################################################
-### Calculating funcitonal diversity at each time point ###
+### Calculating functional diversity at each time point ###
 ###########################################################
 
 ### Hannah White 14.05.2021
-
-### Calculate the functional dispersion, RaoQ and functional redundancy
-### at each site in each village in each year
 
 library(FD)
 library(vegan)
@@ -134,3 +131,46 @@ FD.df <- data.frame(bird.comm[,1:4], all.SR = all.FD$nbsp, all.fdis = all.FD$FDi
 
 
 save(FD.df, file = 'FDRomania.RData')
+
+
+#####################################################
+##### Overall functional diversity at each site #####
+#####################################################
+
+bird.site <- bird.comm[,c(2, 3, 5:120)] # extracts village, site and species columns
+bird.mean <- aggregate(. ~ Village + Site, data = bird.site, mean)
+
+mean.abund <- bird.mean[,3:118]
+mean.alpha <- mean.abund[, order(names(mean.abund))]
+
+
+
+### All traits
+#all.dist <- gowdis(traits.all) # make sure gowdis distances are used so that traits are scaled
+all.FDbysite <- dbFD(all.dist, mean.alpha)
+
+## Response traits
+#response.dist <- gowdis(traits.response)
+response.FDbysite <- dbFD(response.dist, mean.alpha)
+
+## Effect traits 
+#effect.dist <- gowdis(traits.effect)
+effect.FDbysite <- dbFD(effect.dist, mean.alpha)
+
+### calculate simpsons
+simp.bysite <- diversity(mean.alpha, index = 'simpson')
+
+### All traits
+fred.all.bysite <- simp.bysite - all.FDbysite$RaoQ
+
+### Response traits
+fred.response.bysite <- simp.bysite - response.FDbysite$RaoQ
+
+### Effect traits
+fred.effect.bysite <- simp.bysite - effect.FDbysite$RaoQ
+
+FDsites.df <- data.frame(bird.mean[,1:2], all.SR = all.FDbysite$nbsp, all.fdis = all.FDbysite$FDis, all.raoq = all.FDbysite$RaoQ, all.fred = fred.all.bysite,
+                         response.SR = response.FDbysite$nbsp, response.fdis = response.FDbysite$FDis, response.raoq = response.FDbysite$RaoQ, response.fred = fred.response.bysite,
+                         effect.SR = effect.FDbysite$nbsp, effect.fdis = effect.FDbysite$FDis, effect.raoq = effect.FDbysite$RaoQ, effect.fred = fred.effect.bysite)
+
+save(FDsites.df, file = 'FDRomaniaSiteLevel.RData')
