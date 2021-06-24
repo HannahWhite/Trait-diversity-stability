@@ -1,0 +1,230 @@
+---
+title: "Bird compositional stability"
+author: "Samuel R.P-J. Ross"
+date: "24/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(readr)
+require(tibble)
+require(tidyr)
+require(scales)
+require(dplyr)
+require(RColorBrewer)
+require(vegan)
+require(orddom)
+require(MuMIn)
+
+setwd("~/Desktop/Research/In progress/2021 Hannah project/Data")
+bird.comm <- read.csv('2013-19_birds.csv', header = TRUE)
+
+### code from Hannah's FDcalculation.R file to clean bird names ###
+
+total_abun<-bird.comm # save full dataframe for total abundance later
+
+# remove columns starting pa, DM and check
+col.pa <- grep('^pa_.*', names(bird.comm))
+bird.comm <- bird.comm[,-col.pa]
+
+col.dm <- grep('^DM.*', names(bird.comm))
+bird.comm <- bird.comm[,-col.dm]
+
+col.check <- grep('^CHECK.*', names(bird.comm))
+bird.comm <- bird.comm[,-col.check]
+
+names(bird.comm) <- gsub('Columba_livia_domest', 'Columba_livia', names(bird.comm))
+names(bird.comm) <- gsub('Buteo_buteo_vulpinus', 'Buteo_buteo', names(bird.comm))
+names(bird.comm) <- gsub('Dendrocopos__leucotos', 'Dendrocopos_leucotos', names(bird.comm))
+names(bird.comm) <- gsub('Dendrocopus_medius', 'Dendrocopos_medius', names(bird.comm))
+names(bird.comm) <- gsub('Delichon_urbica', 'Delichon_urbicum', names(bird.comm))
+names(bird.comm) <- gsub('Ardea_Purpurea', 'Ardea_purpurea', names(bird.comm))
+names(bird.comm) <- gsub('Columba_palumbas', 'Columba_palumbus', names(bird.comm))
+names(bird.comm) <- gsub('Cyanistes_caeruleus', 'Parus_caeruleus', names(bird.comm))
+names(bird.comm) <- gsub('Periparus_ater', 'Parus_ater', names(bird.comm))
+names(bird.comm) <- gsub('Emberiza_calandra', 'Miliaria_calandra', names(bird.comm))
+names(bird.comm) <- gsub('Chloris_chloris', 'Carduelis_chloris', names(bird.comm))
+names(bird.comm) <- gsub('Poecile_palustris', 'Parus_palustris', names(bird.comm))
+names(bird.comm) <- gsub('Iduna_pallida', 'Hippolais_pallida', names(bird.comm))
+names(bird.comm) <- gsub('Saxicola_rubetrus', 'Saxicola_rubetra', names(bird.comm))
+names(bird.comm) <- gsub('Saxocola_torquatus', 'Saxicola_torquatus', names(bird.comm))
+names(bird.comm) <- gsub('Circus_circus', 'Circus_cyaneus', names(bird.comm))
+names(bird.comm) <- gsub('Fulcia_atra', 'Fulica_atra', names(bird.comm))
+
+### Find columns where species is has not been identified to sp level
+not.sp <- grep('_sp', names(bird.comm))
+bird.notsp <- bird.comm[,not.sp]
+
+range(bird.notsp)
+apply(bird.notsp, 2, FUN = function(x) length(which(x > 0)))
+
+fam <- grep('idae', names(bird.comm))
+bird.fam <- bird.comm[,fam]
+
+range(bird.fam)
+apply(bird.fam, 2, FUN = function(x) length(which(x > 0)))
+
+sp.rm <- c(not.sp, fam)
+
+### Take these species out for now but may add back in
+bird.comm <- bird.comm[ ,-sp.rm]
+
+### Combine Buteo columns and other corrected bird species names
+bird.comm$Buteo_buteo <- bird.comm$Buteo_buteo + bird.comm$Buteo_buteo.1
+bird.comm <- subset(bird.comm, select = -c(Buteo_buteo.1))
+
+bird.comm$Saxicola_rubetra <- bird.comm$Saxicola_rubetra + bird.comm$Saxicola_rubetra.1
+bird.comm <- subset(bird.comm, select = -c(Saxicola_rubetra.1))
+
+bird.comm$Saxicola_torquatus <- bird.comm$Saxicola_torquatus + bird.comm$Saxicola_torquatus.1
+bird.comm <- subset(bird.comm, select = -c(Saxicola_torquatus.1))
+
+sp <- names(bird.comm)[6:121]
+
+#bird.missing <- sp[!sp %in% traits.rom$species]
+
+setwd("~/Desktop/Research/In progress/2021 Hannah project/Data")
+Site_data<-read_csv(file = 'Site_data.csv',col_names = T)
+
+```
+
+**Hellinger transformation**
+
+First, we'll produce the Hellinger transformed community matrix which is basically the square root transformation of relative abundance, but is even less sensitive to abundance (particularly in the case of large numbers of taxa). Hellinger transformations do not give high weights to rare species. Legendre & Gallagher (2001, _Oecologia_) suggest using Hellinger transformation before ordination *unless* one wants to give high weight to rare species.
+
+```{r}
+
+# split out bird data across all years and sites
+t.all<-bird.comm[,names(bird.comm) %in% sp]
+
+# Hellinger-transform the species dataset
+Comp.t.all <- decostand(t.all, "hellinger")
+
+# Add them back into the original dataset
+t.all<-bird.comm
+t.all[,names(t.all) %in% sp]<-Comp.t.all
+rm(Comp.t.all)
+
+```
+
+Now we have Hellinger-transformed bird data from which we can calculate Bray Curtis (dis)similarity. We'll calculate dissimilarity through time to get at temporal variability. 
+
+Let's measure temporal variability as a measure of stability, using the Euclidean distance of each site at time (t) to the centroid of that site through time. 
+
+```{r}
+
+# get only the data for which we have environmental data for the sites
+bird.comm2<-bird.comm[bird.comm$Site %in% Site_data$Site_ID,]
+
+# get output table
+Bird_Temp_CV<-data.frame(matrix(data =unique(bird.comm2$Site)))
+colnames(Bird_Temp_CV)<-"Site"
+Bird_Temp_CV$Temp_Var<-NA
+Bird_Temp_CV$N_years<-1
+
+# convert t.all sites to factors
+t.all2<-t.all[t.all$Site %in% Bird_Temp_CV$Site,]
+
+t.all2$Site<-parse_factor(x = as.character(t.all2$Site),
+                          ordered = F,
+                          include_na = F)
+
+```
+
+**Bray-Curtis dissimilarity**
+
+Generate dissimilarity matrices using Bray-Curtis:
+
+```{r}
+
+# for each site in our list...
+Site.mat<-list()
+
+for (i in 1:nrow(Bird_Temp_CV)) {
+  
+  Data<-t.all2[t.all2$Site %in% Bird_Temp_CV$Site[i],names(t.all2) %in% sp]
+
+  Site.mat[[i]]<-vegdist(Data,
+                         method="bray", 
+                         binary=FALSE, 
+                         diag=TRUE, 
+                         upper=FALSE, 
+                         na.rm = TRUE)
+
+}
+
+```
+
+**Temporal variability**
+
+Now get Temporal Variability as the Euclidean distance to each site's time-averaged centroid:
+
+```{r}
+
+for (i in c(1:length(Site.mat))) {
+    if(length(Site.mat[[i]]) > 1){
+    
+    Centroid.Out<-betadisper(d = Site.mat[[i]],
+                  group = t.all2$Site[t.all2$Site %in% Bird_Temp_CV$Site[i]],
+                  type = "centroid",
+                  sqrt.dist = T)
+  
+    # get temporal CV as mean of distances between time points for each site
+    Bird_Temp_CV$Temp_Var[i]<-mean(Centroid.Out$distances,na.rm=T)
+  
+    # get number of points in time series (i.e. number of sampling years)
+    Bird_Temp_CV$N_years[i]<-nrow(bird.comm2[bird.comm2$Site %in% Bird_Temp_CV$Site[i],])
+  }
+}
+
+```
+
+
+Here's our sample size depending on the number of years in our time series. We provisionally decided to do analyses based on time series of length <=5, which gives us 98 sites (plenty for analysis!)
+
+```{r}
+
+hist(Bird_Temp_CV$N_years,breaks = 7)
+
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 2,]) # 234
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 3,]) # 234
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 4,]) # 205
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 5,]) # 98
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 6,]) # 51
+nrow(Bird_Temp_CV[Bird_Temp_CV$N_years >= 7,]) # 5
+
+```
+
+
+**Community Asynchrony**
+
+```{r}
+
+Bird_Temp_CV$Com.Asynch<-NA
+
+for (i in c(1:length(Site.mat))) {
+    if(length(Site.mat[[i]]) > 1){
+      
+      # get species abundances of all bird species for site of interest
+      boop<-bird.comm2[bird.comm2$Site %in% Bird_Temp_CV$Site[i],names(bird.comm2) %in% sp]
+  
+      # get sd of each species through time
+      bi<-apply(boop,MARGIN = 2,FUN = sd,na.rm=T)
+
+      # get total abundance for site of interest
+      bT<-unlist(total_abun$DM2a_Total_Abundance[total_abun$Site %in% Bird_Temp_CV$Site[i]])
+
+      # get variance of total abundance
+      Total_var<-sd(bT)^2
+
+      # calculate community asynchrony as 1 - variance of total abundance / (sum of standard deviations of individual species) ^ 2
+      Bird_Temp_CV$Com.Asynch[i]<-1-(Total_var/sum(bi)^2)
+  }
+}
+
+```
+
+ranges between 0 and 1 where 1 = perfectly asynchronous changes to species abundances, and 0 is perfect asynchrony
