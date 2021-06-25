@@ -1,0 +1,114 @@
+---
+title: "Land cover data"
+author: "Samuel R.P-J. Ross"
+date: "25/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(readr)
+require(tibble)
+require(tidyr)
+require(scales)
+require(dplyr)
+require(patchwork)
+
+setwd("~/Desktop/Research/In progress/2021 Hannah project/Data")
+Site_data<-read_csv(file = 'longform_Site_data.csv',col_names = T)
+
+```
+
+Our land cover data has buffer zones at 3 scales (100m, 400m, and 1000m). I expect that birds are most likely affected at the 1000m scale because of their dispersal ability, but the 100m scale also represents (local) fine-scale land cover differences that might affect habitat use at the local scale. So we'll separate out our land cover data to these two different scales: 
+
+```{r}
+
+# get only local 100m scale
+Land_local <- Site_data[Site_data$Buffer %in% 100,]
+
+# get only regional 1000m scale
+Land_km <- Site_data[Site_data$Buffer %in% 1000,]
+
+```
+
+Start by visualising our sites in space: 
+
+```{r}
+
+plot(Land_local$xcoord_EPSG_3035,Land_local$ycoord_EPSG_3035)
+
+```
+
+Yep, they look like transects! Just by eyeballing this, I suspect we'll need to account for spatial autocorrelation by fitting models with spatial error structure. 
+
+Next let's have a look at some histograms to see how much variation there is in different land cover types among our sites:
+
+```{r}
+
+# proportion of urban area
+hist(Land_local$P_Urban,breaks = 10)
+hist(Land_km$P_Urban,breaks = 10)
+
+# proportion of agriculture
+hist(Land_local$P_Agriculture,breaks = 10)
+hist(Land_km$P_Agriculture,breaks = 10)
+
+# proportion of agriculture (including agriculture with natural patches)
+hist(Land_local$`P_Agri_and_semi-agri`,breaks = 10)
+hist(Land_km$`P_Agri_and_semi-agri`,breaks = 10)
+
+# proportion of agriculture (including agriculture with natural patches)
+hist(Land_local$P_natural,breaks = 10)
+hist(Land_km$P_natural,breaks = 10)
+
+```
+
+For proportion of urban area, we see a few sites have some urban area, more so at the larger spatial scale. But these are very much not urban sites - even the highest values are around 35% urban area. 
+
+For proportion of agriculture (excluding agricultural land with significant natural patches), we see a strong dichotomy at the local 100m scale (more suited to a discrete axis, agriculture vs other) but at the 1000m scale there's a nice range of values from 0-1 more suited to a continuous axis (proportion of agriculture).
+
+The same is true for proportion of agriculture including land that is predominantly agriculture but has some natural vegetation too - though in this case, there's a heaver skew towards 1, so the distribution looks less Gaussian. 
+
+When looking only at purely natural land cover (grasses, forests, scrub, marshland etc) we see a similar pattern in the opposite direction (skewed towards 0).
+
+Now let's also take a quick look at our other measures: 
+
+```{r}
+
+# mean tree cover density
+hist(Land_local$tcd_mean,breaks = 10)
+hist(Land_km$tcd_mean,breaks = 10)
+
+# percentage of small woody features
+hist(Land_local$SWF_area_PERCENT_type_TOTAL,breaks = 10)
+hist(Land_km$SWF_area_PERCENT_type_TOTAL,breaks = 10)
+
+# mean leaf area index
+hist(Land_local$lai_mean,breaks = 10)
+hist(Land_km$lai_mean,breaks = 10)
+
+# mean topographic wetness index
+hist(Land_local$twi_mean,breaks = 10)
+hist(Land_km$twi_mean,breaks = 10)
+
+# mean topographic wetness index
+hist(Land_local$elev_m_mean,breaks = 10)
+hist(Land_km$elev_m_mean,breaks = 10)
+
+```
+
+Mean tree cover density shows very few trees at the 100m scale, but a better (albeit still heavy tailed) distribution at the 1km scale. 
+
+The % of small woody features (hedges etc) mimics this pattern at the 100m scale - very few SWFs - but looks a bit more normally distributed at the 1km scale.
+
+Leaf area index shows a nice spread, with a hint of a normal distribution at the 1km scale. 
+
+The same is true for the topographic wetness index, representing a nice spread of fast vs slow draining land following rainfall.
+
+Finally, we might also consider elevation, which shows a nice spread of sites at higher vs lower elevations. 
+
+Remember that all of the land cover values will be spatially autocorrelated within these distributions, though! 
+
+~End~
