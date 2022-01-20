@@ -1,12 +1,12 @@
 ##############################################################################
-### Initial models for H1 - Response diversity and stability realtionships ###
+### Initial models for H1 - Response diversity and stability relationships ###
 ##############################################################################
 
 ### Hannah White 13.01.2022
 
 ### This code investigates the relationship between the functional dispersion of response traits, 
 ### and different components of community stability. 
-### It uses gls to build and SEM using pievewiseSEM and investigates different spatial error structures
+### It uses gls to build and SEM using piecewiseSEM and investigates different spatial error structures
 
 
 library(ggplot2)
@@ -15,14 +15,12 @@ library(spdep)
 library(piecewiseSEM)
 
 ## Read in data
-setwd('D:\\ResponseEffectDiversity\\RomaniaData')
-
 load('Bird_Temp_CV.RData')
 load('communityCoV.RData')
 #load('FDRomania.RData')
 load('FDRomaniaSiteLevel.RData')
 
-sites <- read.csv('D:\\ResponseEffectDiversity\\RomaniaData\\longform_Site_data.csv', header = TRUE)
+sites <- read.csv('longform_Site_data.csv', header = TRUE)
 coords <- sites[,1:3]
 rm(sites)
 
@@ -180,7 +178,7 @@ gls.stab <- gls(Temp_Var ~ Com.Asynch, data = bird.long,
 plot(Variogram(gls.stab, resType = 'n'))
 plot(gls.stab, resid(., type = 'n') ~ fitted(.), abline = 0)
 hist(resid(gls.stab, type ='n'))
-qqnorm(gls.stab, ~resid(.,type = 'n')) # actually this is not great
+qqnorm(gls.stab, ~resid(.,type = 'n')) 
 
 summary(gls.stab) # higher asynchrony leads to lower temporal community variability
 
@@ -193,7 +191,7 @@ gls.abund <- gls(CoV ~ Com.Asynch, data = bird.long,
 plot(Variogram(gls.abund, resType = 'n'))
 plot(gls.abund, resid(., type = 'n') ~ fitted(.), abline = 0)
 hist(resid(gls.abund, type ='n'))
-qqnorm(gls.abund, ~resid(.,type = 'n')) # actually this is not great
+qqnorm(gls.abund, ~resid(.,type = 'n')) 
 
 summary(gls.abund) # higher asynchrony leads to lower CoV in community abundance
 
