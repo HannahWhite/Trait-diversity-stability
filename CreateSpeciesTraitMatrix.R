@@ -3,6 +3,8 @@
 ##########################################################################
 
 #### Hannah White 04.05.2021
+#### Edited 10.05 to match new species list
+#### Edited 14.06.2022 to add Avonet traits
 
 ### Gets data from Elton Traits and extracts relevant traits for species in the 
 ### Romania trait dataset. Some synonyms have to be changed.  
@@ -103,6 +105,35 @@ traits.rom <- merge(traits.rom, clutch.rom, by.x = 'Scientific', by.y = 'species
 
 names(traits.rom)[c(1, 25)] <- c('species', 'clutch.mean')
 
-save(traits.rom, file = 'TraitsRom.RData')
+### Add traits from Avonet
+### read in trait data - AVONET_Birdlife1 sheet from Avonet supplementary information
+avo <- read.csv('avonetBL.csv', header = TRUE)
+avo$Species1 <- gsub(' ', '_', avo$Species1)
 
+# remove unnecessary columns to make data easier to handle
+avo <- avo [, c(2, 11:20)]
+
+## add row for hooded crow with same traits as carrion crow
+c.corone <- avo[which(avo$Species1 == 'Corvus_corone'),]
+c.cornix <- gsub('corone', 'cornix', c.corone)
+avo <- rbind(avo, c.cornix)
+
+avo$Species1 <- gsub('Leiopicus_medius', 'Dendrocopos_medius', avo$Species1)
+avo$Species1 <- gsub('Dryobates_minor', 'Dendrocopos_minor',  avo$Species1)
+avo$Species1 <- gsub('Mareca_strepera', 'Anas_strepera',  avo$Species1)
+avo$Species1 <- gsub('Clanga_pomarina', 'Aquila_pomarina',avo$Species1)
+avo$Species1 <- gsub('Linaria_cannabina', 'Carduelis_cannabina',  avo$Species1)
+avo$Species1 <- gsub('Cyanistes_caeruleus', 'Parus_caeruleus', avo$Species1)
+avo$Species1 <- gsub('Periparus_ater', 'Parus_ater', avo$Species1)
+avo$Species1 <- gsub('Emberiza_calandra', 'Miliaria_calandra', avo$Species1)
+avo$Species1 <- gsub('Chloris_chloris', 'Carduelis_chloris', avo$Species1)
+avo$Species1 <- gsub('Poecile_palustris', 'Parus_palustris', avo$Species1)
+avo$Species1 <- gsub('Iduna_pallida', 'Hippolais_pallida', avo$Species1)
+
+# get the species from the trait matrix that are in Romania
+avo.rom <- avo[avo$Species1 %in% birds$species,]
+
+traits.rom <- merge(traits.rom, avo.rom, by.x = 'species', by.y = 'Species1', all= TRUE)
+
+save(traits.rom, file = 'TraitsRom.RData')
 
