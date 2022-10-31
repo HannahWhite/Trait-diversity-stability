@@ -18,7 +18,7 @@ load('communityCoV.RData')
 #load('FDRomania.RData')
 load('FDRomaniaSiteLevel.RData')
 
-sites <- read.csv('D:\\ResponseEffectDiversity\\RomaniaData\\longform_Site_data.csv', header = TRUE)
+sites <- read.csv('longform_Site_data.csv', header = TRUE)
 coords <- sites[,1:3]
 rm(sites)
 
@@ -303,3 +303,25 @@ effect.lm <- lm(log(cv.fdis) ~ Temp_Var + CoV, data = bird.long)
 
 sem2 <- psem(sem.async, sem.comvar, sem.coefvar, sem.effect)
 summary(sem2)
+
+## Check tests of directed separation
+dSep(sem2)
+
+## Looks like cv.fdis might also be dependent on response.fdis, and CoV might be related to Temp_Var
+## Add these to SEM
+
+sem.effect2 <- gls(log(cv.fdis) ~ Temp_Var + CoV + response.fdis, data = bird.long,
+                   corr = corGaus(form = ~xcoord + ycoord, nugget = TRUE))
+plot(sem.effect2, resid(., type = 'n') ~ fitted(.), abline = 0)
+hist(resid(sem.effect2, type ='n'))
+qqnorm(sem.effect2, ~resid(.,type = 'n'))
+
+sem.coefvar2 <- gls(CoV ~ response.fdis + Com.Asynch + Temp_Var, data = bird.long,
+                    corr = corGaus(form = ~xcoord + ycoord, nugget = TRUE))
+plot(sem.coefvar2, resid(., type = 'n') ~ fitted(.), abline = 0)
+hist(resid(sem.coefvar2, type ='n')) # seems like it might be okay unlogged?
+qqnorm(sem.coefvar2, ~resid(.,type = 'n'))
+
+sem3 <- psem(sem.async, sem.comvar, sem.coefvar2, sem.effect2)
+summary(sem3) # so now the only thing that impacts the variability of effect trait diversity is response trait diversity
+
