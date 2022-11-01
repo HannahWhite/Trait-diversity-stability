@@ -9,11 +9,18 @@
 
 library(nlme)
 library(multcomp)
-library(ggplot2)
 library(RColorBrewer)
 library(cowplot)
 library(scales)
-library(tidyverse)
+library(ape)
+library(dplyr)
+library(ggplot2)
+library(tibble)
+library(tidyr)
+library(readr)
+library(purrr)
+library(stringr)
+library(forcats)
 
 ## Read in data
 setwd("~/Documents/GitHub/Trait-diversity-stability")
@@ -68,11 +75,10 @@ p.response <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
-  annotate('text',x = 1, y = 0.138, label = 'a') + 
-  annotate('text', x = c(2, 3), y = c(0.138, 0.138), label = 'b') +
+  #annotate('text',x = 1, y = 0.138, label = 'a') + 
+  #annotate('text', x = c(2, 3), y = c(0.138, 0.138), label = 'b') +
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
@@ -97,11 +103,10 @@ p.effect <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
-  annotate('text',x = 1, y = 0.17, label = 'a') + 
-  annotate('text', x = c(2, 3), y = c(0.17, 0.17), label = 'b') +
+  #annotate('text',x = 1, y = 0.17, label = 'a') + 
+  #annotate('text', x = c(2, 3), y = c(0.17, 0.17), label = 'b') +
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
@@ -125,11 +130,10 @@ p.effectvar <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
-  annotate('text',x = c(1,2), y = c(-0.65, -0.65), label = 'a') + 
-  annotate('text', x =  3, y = -0.65, label = 'b') +
+  #annotate('text',x = c(1,2), y = c(-0.65, -0.65), label = 'a') + 
+  #annotate('text', x =  3, y = -0.65, label = 'b') +
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
@@ -154,8 +158,7 @@ p.asyn <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
@@ -181,11 +184,10 @@ p.temp  <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
-  annotate('text',x = 1, y = 0.58, label = 'a') + 
-  annotate('text', x = c(2, 3), y = c(0.58, 0.58), label = 'b') +
+  #annotate('text',x = 1, y = 0.58, label = 'a') + 
+  #annotate('text', x = c(2, 3), y = c(0.58, 0.58), label = 'b') +
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
@@ -209,12 +211,11 @@ p.cov  <-
              show.legend = FALSE) + 
   geom_boxplot(aes(fill = majority), col = 'black',
                alpha = 0.6) + 
-  scale_color_manual(values = c('#fd6f77','#bd95b2','#00b0f0'),aesthetics = c('colour','fill')) +
-  #scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
+  scale_color_brewer(palette = "Dark2", direction = -1,aesthetics = c('colour','fill')) + 
   scale_x_discrete(labels = c('Artificial', 'Agriculture', 'Forest and \n semi-natural')) + 
-  annotate('text',x = 1, y = 0.7, label = 'a') + 
-  annotate('text', x = 2, y = 0.7, label = 'b') +
-  annotate('text', x = 3, y = 0.7, label = 'ab') +
+  #annotate('text',x = 1, y = 0.7, label = 'a') + 
+  #annotate('text', x = 2, y = 0.7, label = 'b') +
+  #annotate('text', x = 3, y = 0.7, label = 'ab') +
   scale_y_continuous(breaks = breaks_pretty(n = 5)) + 
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
