@@ -4,6 +4,7 @@
 
 ### Hannah White 29.06.2022
 ### Edited 17.08.2022 to change axis labels
+### Edited 07.06.2023 for new FD calculations
 
 ### Set up data
 
@@ -220,15 +221,8 @@ p.cov  <-
   scale_shape_manual(values = c(22,2,1)) +
   theme(legend.position = "none")
 
-library(patchwork)
-patch <- (p.response + p.asyn) / (p.temp + p.cov) / (p.effect + p.effectvar) +  plot_annotation(tag_levels = "a", tag_suffix = ')')
-
-#tiff('D:\\ResponseEffectDiversity\\ResultsAndFigures\\LandcoverFigures\\LandcoverBoxplots.tiff', res = 360,
-#     height = 10, width = 10, unit = 'in', compression = 'lzw')
-#cowplot::plot_grid(p.response, p.effect, p.effectvar, p.asyn, p.temp, p.cov, nrow = 3,
-#                   labels = c('a)', 'b)', 'c)', 'd)', 'e)', 'f)'))
-patch
-dev.off()
+cowplot::plot_grid(p.response, p.asyn, p.temp, p.cov, p.effect, p.effectvar, nrow = 3,
+                   labels = c('a)', 'b)', 'c)', 'd)', 'e)', 'f)'))
 
 
 #### Interaction figures
@@ -236,19 +230,19 @@ cov2 <- gls(CoV ~ response.fdis*majority, data = bird.long,
             corr = corGaus(form = ~xcoord + ycoord, nugget = FALSE)) # AIC = -16.53042 (-8.476406)
 
 library(sjPlot)
-colpal <- RColorBrewer::brewer.pal(3, "Dark2")[3:1]
+
 p.int <- plot_model(cov2, 
                     type = 'int', 
                     show.values = TRUE, 
+                    show.data = TRUE,
                     title = '', 
                     #colors = colpal,
-                    colors = c('#fd6f77','#bd95b2','#00b0f0')) + 
+                    colors = c('#7570B3','#D95F02','#1B9E77')) + 
   theme_classic() + 
-  theme(legend.title = element_blank(),legend.position = 'top') + 
-  xlab('Response diversity') + ylab('Functional Variability') 
+  theme(legend.title = element_blank(),
+        axis.text = element_text(size = 14), axis.title = element_text(size = 14)) + 
+    xlab('Response diversity') + ylab('Functional Variability') 
 
-tiff('D:\\ResponseEffectDiversity\\ResultsAndFigures\\LandcoverFigures\\CoVInteraction.tiff', res = 360,
-     height = 7, width = 7, unit = 'in', compression = 'lzw')
 p.int
-dev.off()
+
 
