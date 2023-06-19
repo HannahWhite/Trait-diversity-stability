@@ -4,6 +4,7 @@
 
 ### Hannah white 27.06.2022
 ### FD calculation includes morphology traits from AVONET
+### Edited 19.06.2023 to fix trait classifications
 
 library(FD)
 library(vegan)
@@ -59,7 +60,7 @@ apply(bird.fam, 2, FUN = function(x) length(which(x > 0)))
 
 sp.rm <- c(not.sp, fam)
 
-### Take these species out for now but may add back in
+### Take these species out 
 
 bird.comm <- bird.comm[ ,-sp.rm]
 
@@ -80,14 +81,18 @@ sp <- names(bird.comm)[6:121]
 
 ### clean traits up to those want to use (body mass, clutch size, and the three plasticity measures)
 
-traits.all <- traits.rom[c(1, 22:26, 42:43, 46)]
+traits.all <- traits.rom[c(1, 22:25, 41:42, 45, 52:69)]
 
 # set species name to row name
 row.names(traits.all) <- traits.all[,1]
 traits.all <- traits.all[,-1]
 
-traits.response <- traits.all[,c(1, 4:6)]
-traits.effect <- traits.all[,c(1:3, 7:8)]
+traits.all$Beak.Length_Culmen <- as.numeric(traits.all$Beak.Length_Culmen)
+traits.all$Beak.Depth <- as.numeric(traits.all$Beak.Depth)
+
+# separte into response and effect
+traits.response <- traits.all[,c(1, 3:5, 15)] # (body mass, diet breadth, foraging plast, clutch.mean, habitat plasticity)
+traits.effect <- traits.all[,c(1, 6:7, 16:25)] # body mass, beak length, beak depth, diet pc1, diet pc2, separate foraging strata
 
 ############################################################################
 ### Functional diversity at each site in each village at each time point ###
@@ -99,15 +104,17 @@ abund <- bird.comm[,5:120]
 bird.alpha <- abund[,order(names(abund))]
 
 ### All traits
-all.dist <- gowdis(traits.all) # make sure gowdis distances are used so that traits are scaled
+weights.all <- c(rep(1, 7), rep(0.5, 2), rep(0.125, 8))
+all.dist <- gowdis(traits.all[,c(1,3:7, 15:25)], w = weights.all) # make sure gowdis distances are used so that traits are scaled
 all.FD <- dbFD(all.dist, bird.alpha)
 
 ## Response traits
 response.dist <- gowdis(traits.response)
-response.FD <- dbFD(response.dist, bird.alpha, corr = 'lingoes')
+response.FD <- dbFD(response.dist, bird.alpha)
 
 ## Effect traits 
-effect.dist <- gowdis(traits.effect)
+weights.effect <- c(rep(1, 3), rep(0.5, 2), rep(0.125, 8))
+effect.dist <- gowdis(traits.effect, w = weights.effect)
 effect.FD <- dbFD(effect.dist, bird.alpha)
 
 ### Calculate functional redundancy as in de Bello et al. 2007
@@ -131,7 +138,7 @@ FD.df <- data.frame(bird.comm[,1:4], all.SR = all.FD$nbsp, all.fdis = all.FD$FDi
                     effect.SR = effect.FD$nbsp, effect.fdis = effect.FD$FDis, effect.raoq = effect.FD$RaoQ, effect.fred = fred.effect)
 
 
-#save(FD.df, file = 'FDRomaniaExtraTraits.RData')
+#save(FD.df, file = 'FDRomaniaRevisedNumeric.RData')
 
 
 #####################################################
@@ -147,15 +154,12 @@ mean.alpha <- mean.abund[, order(names(mean.abund))]
 
 
 ### All traits
-#all.dist <- gowdis(traits.all) # make sure gowdis distances are used so that traits are scaled
 all.FDbysite <- dbFD(all.dist, mean.alpha)
 
 ## Response traits
-#response.dist <- gowdis(traits.response)
-response.FDbysite <- dbFD(response.dist, mean.alpha, corr = 'lingoes')
+response.FDbysite <- dbFD(response.dist, mean.alpha)
 
 ## Effect traits 
-#effect.dist <- gowdis(traits.effect)
 effect.FDbysite <- dbFD(effect.dist, mean.alpha)
 
 ### calculate simpsons
@@ -174,6 +178,6 @@ FDsites.df <- data.frame(bird.mean[,1:2], all.SR = all.FDbysite$nbsp, all.fdis =
                          response.SR = response.FDbysite$nbsp, response.fdis = response.FDbysite$FDis, response.raoq = response.FDbysite$RaoQ, response.fred = fred.response.bysite,
                          effect.SR = effect.FDbysite$nbsp, effect.fdis = effect.FDbysite$FDis, effect.raoq = effect.FDbysite$RaoQ, effect.fred = fred.effect.bysite)
 
-#save(FDsites.df, file = 'FDRomaniaSiteLevelExtraTraits.RData')
+#save(FDsites.df, file = 'FDRomaniaSiteLevelRevisedNumeric.RData')
 
 
