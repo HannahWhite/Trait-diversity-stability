@@ -5,6 +5,7 @@
 #### Hannah White 04.05.2021
 #### Edited 10.05 to match new species list
 #### Edited 14.06.2022 to add Avonet traits
+### Edited 19.06.2023 to change trait classifications and fix trait types
 
 ### Gets data from Elton Traits and extracts relevant traits for species in the 
 ### Romania trait dataset. Some synonyms have to be changed.  
@@ -58,8 +59,8 @@ traits.rom <- traits.rom[,c(8, 9:20, 24:31, 36)]
 
 traits.rom[,c(3:12, 14:22)] <- apply(traits.rom[,c(3:12, 14:22)], 2, as.numeric)
 
-traits.rom$diet.plasticity <- rowSums(traits.rom[,3:12])
-traits.rom$foraging.plasticity <- rowSums(traits.rom[,14:22])
+traits.rom$diet.plasticity <- apply(traits.rom[,3:12], 1, function(x) length(which(x>0)))
+traits.rom$foraging.plasticity <- apply(traits.rom[,14:21], 1, function(x) length(which(x>0)))
 
 #### Bring in clutch size from European bird trait database
 
@@ -134,6 +135,37 @@ avo$Species1 <- gsub('Iduna_pallida', 'Hippolais_pallida', avo$Species1)
 avo.rom <- avo[avo$Species1 %in% birds$species,]
 
 traits.rom <- merge(traits.rom, avo.rom, by.x = 'species', by.y = 'Species1', all= TRUE)
+
+##### Calculate extra diet 
+
+## calculate same diet classes as Ausprey (except splitting out scavenger from other vertivore diets)
+traits.rom$diet.invert <- traits.rom$Diet.Inv
+traits.rom$diet.frugi <- traits.rom$Diet.Fruit
+traits.rom$diet.nect <- traits.rom$Diet.Nect
+traits.rom$diet.gran <- traits.rom$Diet.Seed
+traits.rom$diet.herb <- traits.rom$Diet.PlantO
+traits.rom$diet.carn <- rowSums(traits.rom[,c(4:7)])
+traits.rom$diet.scav <- traits.rom$Diet.Scav
+
+traits.rom$diet.breadth <- apply(traits.rom[,52:58], 1, function(x) length(which(x>0)))
+
+### PCA to get species level diet classification
+#pca <- prcomp(traits.rom[,53:59], center = TRUE, scale. = TRUE)
+
+library(vegan)
+pca.vegan <- rda(traits.rom[,52:58], scale = TRUE)
+summary(pca.vegan)
+
+traits.rom$diet.pc1 <- scores(pca.vegan)$sites[,1]
+traits.rom$diet.pc2 <- scores(pca.vegan)$sites[,2]
+
+## redefine foraging as pres/abs
+foraging <- ifelse(traits.rom[,14:21] > 0, 1, 0)
+colnames(foraging) <- c('foraging.wbs', 'foraging.was', 'foraging.ground', 'foraging.understory', 
+                        'foraging.midhigh', 'foraging.canopy', 'foraging.aerial', 'foraging.pelagic')
+
+traits.rom <- data.frame(traits.rom, foraging)
+
 
 save(traits.rom, file = 'TraitsRom.RData')
 
