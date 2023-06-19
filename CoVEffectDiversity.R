@@ -3,9 +3,10 @@
 ####################################################
 
 ### Hannah White 25.04.2022
+### Edited 19.06.2023
 
 # load functional diversity measures at each time point
-load('D:\\ResponseEffectDiversity\\RomaniaData\\FDRomania.RData')
+load('D:\\ResponseEffectDiversity\\RomaniaData\\FDRomaniaRevisedNumeric.RData')
 
 ##### Calculate coefficient of variances #####
 
@@ -30,4 +31,4 @@ cv.fred <- sd.fred$effect.fred/mean.fred$effect.fred
 
 cv.effectdiv <- data.frame(Site = mean.fdis$Site, cv.fdis, cv.raoq, cv.fred)
 
-save(cv.effectdiv, file = 'D:\\ResponseEffectDiversity\\RomaniaData\\CVeffectdiv.RData')
+save(cv.effectdiv, file = 'D:\\ResponseEffectDiversity\\RomaniaData\\CVeffectdivRevisedNumeric.RData')
